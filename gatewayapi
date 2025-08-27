@@ -1,0 +1,73 @@
+com.example.gatewayapi
+=========================================================
+
+package com.example.gatewayapi;
+
+
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.reactive.CorsWebFilter;
+import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
+
+@Configuration
+public class CorsGlobalConfiguration {
+
+    @Bean
+    public CorsWebFilter corsWebFilter() {
+        CorsConfiguration corsConfig = new CorsConfiguration();
+        corsConfig.addAllowedOrigin("http://localhost:3000");
+        corsConfig.addAllowedMethod("*");
+        corsConfig.addAllowedHeader("*");
+        corsConfig.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", corsConfig);
+
+        return new CorsWebFilter(source);
+    }
+}
+
+package com.example.gatewayapi;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class GatewayApiApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(GatewayApiApplication.class, args);
+    }
+}
+
+application.yml
+===============================================================
+
+server:
+  port: 8080 # Gateway will listen on 8080
+
+spring:
+  application:
+    name: gateway-api
+  cloud:
+    gateway:
+      routes:
+        - id: registration-service
+          uri: lb://registration-service
+          predicates:
+            - Path=/api/register/**
+        - id: login-service
+          uri: lb://login-service
+          predicates:
+            - Path=/api/login/**
+        - id: chat-message-service   # <-- NEW ROUTE
+          uri: lb://chat-message-service
+          predicates:
+            - Path=/chat/api/messages/**  # <-- Adjust this if your frontend/postman calls /chat/api/messages/**
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    fetch-registry: true
+    register-with-eureka: true
