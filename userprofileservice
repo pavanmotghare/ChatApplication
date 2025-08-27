@@ -1,0 +1,168 @@
+com.example.userprofileservice
+==================================================
+package com.example.userprofileservice;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class UserProfileServiceApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(UserProfileServiceApplication.class, args);
+    }
+}
+
+com.example.userprofileservice.controller
+========================================================
+
+package com.example.userprofileservice.controller;
+
+import com.example.userprofileservice.entity.UserProfile;
+import com.example.userprofileservice.service.UserProfileService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/profile")
+public class UserProfileController {
+    private final UserProfileService userProfileService;
+
+    public UserProfileController(UserProfileService userProfileService) {
+        this.userProfileService = userProfileService;
+    }
+
+    @GetMapping("/{username}")
+    public ResponseEntity<UserProfile> getProfile(@PathVariable String username) {
+        UserProfile profile = userProfileService.getProfile(username);
+        if (profile == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(profile);
+    }
+
+    @PutMapping("/{username}")
+    public ResponseEntity<UserProfile> updateProfile(
+            @PathVariable String username, @RequestBody UserProfile userProfile) {
+        UserProfile updated = userProfileService.updateProfile(username, userProfile);
+        return ResponseEntity.ok(updated);
+    }
+}
+
+com.example.userprofileservice.entity
+===================================================================
+
+// src/main/java/com/example/userprofileservice/entity/UserProfile.java
+package com.example.userprofileservice.entity;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "user_profiles")
+public class UserProfile {
+    @Id
+    private String username;
+    private String displayName;
+    private String bio;
+    private String avatarUrl;
+
+    public UserProfile() {}
+
+    public UserProfile(String username, String displayName, String bio, String avatarUrl) {
+        this.username = username;
+        this.displayName = displayName;
+        this.bio = bio;
+        this.avatarUrl = avatarUrl;
+    }
+
+    // Getters and Setters
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+
+    public String getDisplayName() { return displayName; }
+    public void setDisplayName(String displayName) { this.displayName = displayName; }
+
+    public String getBio() { return bio; }
+    public void setBio(String bio) { this.bio = bio; }
+
+    public String getAvatarUrl() { return avatarUrl; }
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+}
+
+
+com.example.userprofileservice.repository
+==================================================================
+
+
+package com.example.userprofileservice.repository;
+
+import com.example.userprofileservice.entity.UserProfile;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface UserProfileRepository extends JpaRepository<UserProfile, String> {
+   
+}
+
+com.example.userprofileservice.service
+=================================================================
+
+
+
+package com.example.userprofileservice.service;
+
+import com.example.userprofileservice.entity.UserProfile;
+import com.example.userprofileservice.repository.UserProfileRepository;
+import org.springframework.stereotype.Service;
+
+import java.util.Optional;
+
+@Service
+public class UserProfileService {
+    private final UserProfileRepository userProfileRepository;
+
+    public UserProfileService(UserProfileRepository userProfileRepository) {
+        this.userProfileRepository = userProfileRepository;
+    }
+
+    public UserProfile getProfile(String username) {
+        return userProfileRepository.findById(username).orElse(null);
+    }
+
+    public UserProfile updateProfile(String username, UserProfile updated) {
+        Optional<UserProfile> opt = userProfileRepository.findById(username);
+        if (opt.isPresent()) {
+            UserProfile profile = opt.get();
+            if(updated.getDisplayName() != null) profile.setDisplayName(updated.getDisplayName());
+            if(updated.getBio() != null) profile.setBio(updated.getBio());
+            if(updated.getAvatarUrl() != null) profile.setAvatarUrl(updated.getAvatarUrl());
+            return userProfileRepository.save(profile);
+        } else {
+            // For simplicity, if not exist, create it:
+            updated.setUsername(username);
+            return userProfileRepository.save(updated);
+        }
+    }
+}
+
+application.yml
+==========================================================================
+spring:
+  application:
+    name: user-profile-service
+  datasource:
+    url: jdbc:mysql://localhost:3306/chatapp
+    username: root
+    password: 123sqlSQL@*#  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+server:
+  port: 8085
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
